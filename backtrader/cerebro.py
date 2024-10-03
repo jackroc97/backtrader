@@ -1500,31 +1500,31 @@ class Cerebro(with_metaclass(MetaParams, object)):
         Actual implementation of run in full next mode. All objects have its
         ``next`` method invoke on each data arrival
         '''
-        datas = sorted(self.datas,
+        self.datas = sorted(self.datas,
                        key=lambda x: (x._timeframe, x._compression))
-        datas1 = datas[1:]
-        data0 = datas[0]
+        datas1 = self.datas[1:]
+        data0 = self.datas[0]
         d0ret = True
 
-        rs = [i for i, x in enumerate(datas) if x.resampling]
-        rp = [i for i, x in enumerate(datas) if x.replaying]
-        rsonly = [i for i, x in enumerate(datas)
+        rs = [i for i, x in enumerate(self.datas) if x.resampling]
+        rp = [i for i, x in enumerate(self.datas) if x.replaying]
+        rsonly = [i for i, x in enumerate(self.datas)
                   if x.resampling and not x.replaying]
-        onlyresample = len(datas) == len(rsonly)
+        onlyresample = len(self.datas) == len(rsonly)
         noresample = not rsonly
 
-        clonecount = sum(d._clone for d in datas)
-        ldatas = len(datas)
+        clonecount = sum(d._clone for d in self.datas)
+        ldatas = len(self.datas)
         ldatas_noclones = ldatas - clonecount
         lastqcheck = False
         dt0 = date2num(datetime.datetime.max) - 2  # default at max
         while d0ret or d0ret is None:
             # if any has live data in the buffer, no data will wait anything
-            newqcheck = not any(d.haslivedata() for d in datas)
+            newqcheck = not any(d.haslivedata() for d in self.datas)
             if not newqcheck:
                 # If no data has reached the live status or all, wait for
                 # the next incoming data
-                livecount = sum(d._laststatus == d.LIVE for d in datas)
+                livecount = sum(d._laststatus == d.LIVE for d in self.datas)
                 newqcheck = not livecount or livecount == ldatas_noclones
 
             lastret = False
@@ -1541,7 +1541,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
             # from the qcheck value
             drets = []
             qstart = datetime.datetime.utcnow()
-            for d in datas:
+            for d in self.datas:
                 qlapse = datetime.datetime.utcnow() - qstart
                 d.do_qcheck(newqcheck, qlapse.total_seconds())
                 drets.append(d.next(ticks=False))
@@ -1553,7 +1553,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
             if d0ret:
                 dts = []
                 for i, ret in enumerate(drets):
-                    dts.append(datas[i].datetime[0] if ret else None)
+                    dts.append(self.datas[i].datetime[0] if ret else None)
 
                 # Get index to minimum datetime
                 if onlyresample or noresample:
@@ -1562,7 +1562,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
                     dt0 = min((d for i, d in enumerate(dts)
                                if d is not None and i not in rsonly))
 
-                dmaster = datas[dts.index(dt0)]  # and timemaster
+                dmaster = self.datas[dts.index(dt0)]  # and timemaster
                 self._dtmaster = dmaster.num2date(dt0)
                 self._udtmaster = num2date(dt0)
 
@@ -1573,7 +1573,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
                         continue
 
                     # try to get a data by checking with a master
-                    d = datas[i]
+                    d = self.datas[i]
                     d._check(forcedata=dmaster)  # check to force output
                     if d.next(datamaster=dmaster, ticks=False):  # retry
                         dts[i] = d.datetime[0]  # good -> store
@@ -1585,7 +1585,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
                 # make sure only those at dmaster level end up delivering
                 for i, dti in enumerate(dts):
                     if dti is not None:
-                        di = datas[i]
+                        di = self.datas[i]
                         rpi = False and di.replaying   # to check behavior
                         if dti > dt0:
                             if not rpi:  # must see all ticks ...
@@ -1601,7 +1601,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
                 # meant for things like live feeds which may not produce a bar
                 # at the moment but need the loop to run for notifications and
                 # getting resample and others to produce timely bars
-                for data in datas:
+                for data in self.datas:
                     data._check()
             else:
                 lastret = data0._last()
@@ -1661,12 +1661,12 @@ class Cerebro(with_metaclass(MetaParams, object)):
         # has not moved forward all datas/indicators/observers that
         # were homed before calling once, Hence no "need" to do it
         # here again, because pointers are at 0
-        datas = sorted(self.datas,
+        self.datas = sorted(self.datas,
                        key=lambda x: (x._timeframe, x._compression))
 
         while True:
             # Check next incoming date in the datas
-            dts = [d.advance_peek() for d in datas]
+            dts = [d.advance_peek() for d in self.datas]
             dt0 = min(dts)
             if dt0 == float('inf'):
                 break  # no data delivers anything
@@ -1676,7 +1676,7 @@ class Cerebro(with_metaclass(MetaParams, object)):
             slen = len(runstrats[0])
             for i, dti in enumerate(dts):
                 if dti <= dt0:
-                    datas[i].advance()
+                    self.datas[i].advance()
                     # self._plotfillers2[i].append(slen)  # mark as fill
                 else:
                     # self._plotfillers[i].append(slen)

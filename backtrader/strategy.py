@@ -214,6 +214,11 @@ class Strategy(with_metaclass(MetaStrategy, StrategyBase)):
             [x._minperiod for x in self._lineiterators[LineIterator.IndType]]
         self._minperiod = max(minperiods or [self._minperiod])
 
+    def adddata(self, data):
+        data._start()
+        self.datas.append(data)
+        self.env.datas.append(data)
+
     def _addwriter(self, writer):
         '''
         Unlike the other _addxxx functions this one receives an instance
